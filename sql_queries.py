@@ -73,7 +73,7 @@ staging_songs_table_create = (
 songplay_table_create = (
     """
     CREATE TABLE IF NOT EXISTS songplays (
-        songplay_id SERIAL PRIMARY KEY,
+        songplay_id INT identity(0, 1),
         session_id int NOT NULL,
         location varchar NOT NULL,
         user_agent varchar NOT NULL,
@@ -140,16 +140,16 @@ time_table_create = (
 
 staging_events_copy = (
     """
-    COPY staging_events FROM '{}'
-    CREDENTIALS 'aws_iam_role={}'
-    json '{}' compupdate on region 'us-west-2';
+    COPY staging_events FROM {}
+    iam_role {}
+    json {} compupdate on region 'us-west-2';
     """
 ).format(LOG_DATA, ARN, LOG_JSONPATH)
 
 staging_songs_copy = (
     """
-    COPY staging_songs FROM '{}'
-    CREDENTIALS 'aws_iam_role={}'
+    COPY staging_songs FROM {}
+    iam_role {}
     json 'auto' compupdate on region 'us-west-2';
     """
 ).format(SONG_DATA, ARN)
