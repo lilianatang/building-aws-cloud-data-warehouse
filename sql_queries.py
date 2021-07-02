@@ -1,6 +1,5 @@
 import configparser
 
-
 # CONFIG
 config = configparser.ConfigParser()
 config.read('dwh.cfg')
@@ -46,7 +45,7 @@ staging_events_table_create= (
         sessionId INT,
         song varchar,
         status INT,
-        ts timestamp,
+        ts bigint,
         userAgent varchar,
         userId INT
     ); 
@@ -73,12 +72,12 @@ staging_songs_table_create = (
 songplay_table_create = (
     """
     CREATE TABLE IF NOT EXISTS songplays (
-        songplay_id INT identity(0, 1),
-        session_id int NOT NULL,
-        location varchar NOT NULL,
-        user_agent varchar NOT NULL,
-        start_time timestamp,
-        user_id int,
+        songplay_id int identity(0, 1) primary key sortkey,
+        session_id int,
+        location varchar,
+        user_agent varchar,
+        start_time timestamp NOT NULL,
+        user_id int NOT NULL distkey,
         artist_id varchar,
         song_id varchar,
         level varchar
@@ -125,7 +124,7 @@ artist_table_create = (
 time_table_create = (
     """
     CREATE TABLE IF NOT EXISTS time (
-        start_time timestamp PRIMARY KEY,
+        start_time bigint PRIMARY KEY,
         hour int NOT NULL,
         day int NOT NULL,
         week int NOT NULL,
@@ -162,8 +161,9 @@ songplay_table_insert = (
     SELECT e.sessionId, e.location, e.userAgent, e.ts, e.userId, a.artist_id,
     s.song_id, e.level
     FROM staging_events e
-    LEFT OUTER JOIN artists a ON a.artist = e.artist
+    LEFT OUTER JOIN artists a ON a.name = e.artist
     LEFT OUTER JOIN songs s ON s.title = e.song
+    WHERE e.page= 'NextSong'
     """
 )
 
@@ -197,12 +197,12 @@ artist_table_insert = (
 time_table_insert = (
     """
     INSERT INTO time (start_time, hour, day, week, month, year, weekday)
-    SELECT a.start_time, EXTRACT(hour FROM a.start_time), 
-    EXTRACT(day FROM a.start_time), EXTRACT(week FROM a.start_time),
-    EXTRACT(month FROM a.start_time), EXTRACT(year FROM a.start_time),
-    EXTRACT(weekday FROM a.start_time)
+    SELECT start_time, EXTRACT(hour FROM start_time) AS hour, 
+    EXTRACT(day FROM start_time), EXTRACT(week FROM start_time) AS day,
+    EXTRACT(month FROM start_time), EXTRACT(year FROM start_time) AS year,
+    EXTRACT(weekday FROM start_time) AS weekday
     FROM
-    (SELECT timestamp'epoch' + start_time/1000 * INTERVAL '1 second' as start_time FROM songplays) a;
+    (SELECT DISTINCT timestamp 'epoch' + ts/1000 * INTERVAL '1 second' as start_time FROM staging_events s) WHERE start_time NOT IN (SELECT DISTINCT start_time FROM time);
     """
 )
 
