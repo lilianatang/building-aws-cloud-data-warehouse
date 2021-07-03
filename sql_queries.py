@@ -45,7 +45,7 @@ staging_events_table_create= (
         sessionId INT,
         song varchar,
         status INT,
-        ts bigint,
+        ts bigint NOT NULL,
         userAgent varchar,
         userId INT
     ); 
@@ -89,10 +89,10 @@ user_table_create = (
     """
     CREATE TABLE IF NOT EXISTS users (
         user_id int PRIMARY KEY,
-        first_name varchar NOT NULL,
-        last_name varchar NOT NULL,
-        gender varchar NOT NULL,
-        level varchar NOT NULL
+        first_name varchar,
+        last_name varchar,
+        gender varchar,
+        level varchar
     );    
     """
 )
@@ -124,7 +124,7 @@ artist_table_create = (
 time_table_create = (
     """
     CREATE TABLE IF NOT EXISTS time (
-        start_time bigint PRIMARY KEY,
+        start_time timestamp PRIMARY KEY,
         hour int NOT NULL,
         day int NOT NULL,
         week int NOT NULL,
@@ -158,7 +158,7 @@ staging_songs_copy = (
 songplay_table_insert = (
     """
     INSERT INTO songplays (session_id, location, user_agent, start_time, user_id, artist_id , song_id, level)
-    SELECT e.sessionId, e.location, e.userAgent, e.ts, e.userId, a.artist_id,
+    SELECT e.sessionId, e.location, e.userAgent, TIMESTAMP 'epoch' + (e.ts / 1000) * INTERVAL '1 second' as start_time, e.userId, a.artist_id,
     s.song_id, e.level
     FROM staging_events e
     LEFT OUTER JOIN artists a ON a.name = e.artist
@@ -172,7 +172,7 @@ user_table_insert = (
     INSERT INTO users (user_id, first_name, last_name, gender, level)
     SELECT DISTINCT userId, firstName, lastName, gender, level
     FROM staging_events
-    WHERE page= 'NextSong' AND user_id NOT IN (SELECT DISTINCT user_id FROM users)
+    WHERE page= 'NextSong' AND userId NOT IN (SELECT DISTINCT user_id FROM users)
     """
 )
 
@@ -202,13 +202,13 @@ time_table_insert = (
     EXTRACT(month FROM start_time), EXTRACT(year FROM start_time) AS year,
     EXTRACT(weekday FROM start_time) AS weekday
     FROM
-    (SELECT DISTINCT timestamp 'epoch' + ts/1000 * INTERVAL '1 second' as start_time FROM staging_events s) WHERE start_time NOT IN (SELECT DISTINCT start_time FROM time);
+    (SELECT DISTINCT timestamp 'epoch' + s.ts/1000 * INTERVAL '1 second' as start_time FROM staging_events s) WHERE start_time NOT IN (SELECT DISTINCT start_time FROM time);
     """
 )
 
 # QUERY LISTS
 
-create_table_queries = [staging_events_table_create, staging_songs_table_create, songplay_table_create, user_table_create, song_table_create, artist_table_create, time_table_create]
+create_table_queries = [staging_events_table_create, staging_songs_table_create, user_table_create, artist_table_create, song_table_create, time_table_create, songplay_table_create]
 drop_table_queries = [staging_events_table_drop, staging_songs_table_drop, songplay_table_drop, user_table_drop, song_table_drop, artist_table_drop, time_table_drop]
 copy_table_queries = [staging_events_copy, staging_songs_copy]
-insert_table_queries = [songplay_table_insert, user_table_insert, song_table_insert, artist_table_insert, time_table_insert]
+insert_table_queries = [user_table_insert, artist_table_insert, time_table_insert, song_table_insert, songplay_table_insert]

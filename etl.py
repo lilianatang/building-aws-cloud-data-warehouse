@@ -7,18 +7,23 @@ def load_staging_tables(cur, conn):
     """
     loads data from S3 to staging tables on Redshift.
     """
-    for query in copy_table_queries:
-        cur.execute(query)
-        conn.commit()
-
+    try:
+        for query in copy_table_queries:
+            cur.execute(query)
+            conn.commit()
+    except Exception as e:
+        print(query, e)
 
 def insert_tables(cur, conn):
     """
     loads data from staging tables to analytics tables on Redshift.
     """
-    for query in insert_table_queries:
-        cur.execute(query)
-        conn.commit()
+    try:
+        for query in insert_table_queries:
+            cur.execute(query)
+            conn.commit()
+    except Exception as e:
+        print(query, e)
 
 
 def main():
